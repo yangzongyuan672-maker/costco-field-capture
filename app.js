@@ -26,6 +26,14 @@ const els = {
 const DB_NAME = "costco-field-capture-v1";
 const STORE = "captures";
 const JPEG_QUALITY = 0.96;
+const EXT_BY_TYPE = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/heic": "heic",
+  "image/heif": "heif",
+  "image/webp": "webp"
+};
 
 let db;
 let stream;
@@ -143,23 +151,21 @@ async function captureFromFile(event) {
     width = null;
   }
 
-  if (file.type && file.type !== "image/jpeg") {
-    blob = await convertImageToJpeg(file);
-  }
-
   await saveCapture(blob, {
     source: "system-camera",
     width,
     height,
     zoom: currentZoom,
-    originalName: file.name
+    originalName: file.name,
+    type: file.type || "application/octet-stream",
+    ext: getFileExtension(file)
   });
 }
 
 async function saveCapture(blob, meta) {
   const next = getNextSlot();
   const capture = {
-    id: crypto.randomUUID(),
+    id: makeId(),
     pairNo: next.pairNo,
     kind: mode,
     createdAt: new Date().toISOString(),
@@ -229,8 +235,8 @@ async function exportZip() {
 
   for (const pair of completePairs) {
     const no = String(pair.pairNo).padStart(3, "0");
-    const productName = `${no}_product.jpg`;
-    const priceName = `${no}_price.jpg`;
+    const productName = `${no}_product.${getCaptureExtension(pair.product)}`;
+    const priceName = `${no}_price.${getCaptureExtension(pair.price)}`;
     files.push({ name: productName, data: await pair.product.blob.arrayBuffer() });
     files.push({ name: priceName, data: await pair.price.blob.arrayBuffer() });
     data.items.push({
@@ -250,7 +256,7 @@ async function exportZip() {
   });
 
   const zipBlob = buildZip(files);
-  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   downloadBlob(zipBlob, `costco_capture_${date}_${completePairs.length}items.zip`);
 }
 
@@ -310,15 +316,6 @@ function canvasToBlob(canvas, type, quality) {
   });
 }
 
-async function convertImageToJpeg(file) {
-  const bitmap = await createImageBitmap(file);
-  els.canvas.width = bitmap.width;
-  els.canvas.height = bitmap.height;
-  els.canvas.getContext("2d", { alpha: false }).drawImage(bitmap, 0, 0);
-  bitmap.close?.();
-  return canvasToBlob(els.canvas, "image/jpeg", JPEG_QUALITY);
-}
-
 function openDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
@@ -326,6 +323,23 @@ function openDb() {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
+
+function getCaptureExtension(capture) {
+  if (capture.meta?.ext) return capture.meta.ext;
+  return EXT_BY_TYPE[capture.blob.type] || "jpg";
+}
+
+function getFileExtension(file) {
+  const fromType = EXT_BY_TYPE[file.type];
+  if (fromType) return fromType;
+  const match = /\.([a-z0-9]+)$/i.exec(file.name || "");
+  return match ? match[1].toLowerCase() : "jpg";
+}
+
+function makeId() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function tx(modeName) {
