@@ -52,6 +52,7 @@ async function init() {
   captures = await loadCaptures();
   bindEvents();
   await render();
+  updateControls();
 }
 
 function bindEvents() {
@@ -87,6 +88,7 @@ async function startCamera() {
     await els.video.play();
     els.emptyCamera.classList.add("is-hidden");
     await setZoom(currentZoom);
+    updateControls();
   } catch (error) {
     alert(`相机启动失败：${error.message || error}`);
     updateControls();
