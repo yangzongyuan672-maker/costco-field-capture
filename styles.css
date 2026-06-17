@@ -81,12 +81,14 @@ video {
 .frame span {
   width: 100%;
   min-height: 44px;
+  padding: 0 8px;
   display: grid;
   place-items: center;
   background: rgb(255 204 25 / 0.9);
   color: #111827;
   font-weight: 900;
-  font-size: 18px;
+  font-size: 16px;
+  text-align: center;
 }
 
 .price-frame {
@@ -137,6 +139,14 @@ video {
 
 #stepTitle {
   font-size: 20px;
+}
+
+.status-row small {
+  display: block;
+  color: #9aa7b7;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 3px;
 }
 
 .count-pill {
