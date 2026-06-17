@@ -23,22 +23,22 @@ input {
 
 .app {
   min-height: 100svh;
-  display: grid;
-  grid-template-rows: minmax(360px, 1fr) auto auto;
+  display: block;
   background: #07111f;
+  padding-bottom: 300px;
 }
 
 .camera-stage {
   position: relative;
   overflow: hidden;
   background: #020713;
-  min-height: 52svh;
+  min-height: 100svh;
 }
 
 video {
   width: 100%;
   height: 100%;
-  min-height: 52svh;
+  min-height: 100svh;
   display: block;
   object-fit: contain;
   background: #020713;
@@ -68,8 +68,8 @@ video {
   position: absolute;
   left: 6%;
   right: 6%;
-  top: 18%;
-  height: 56%;
+  top: 8%;
+  height: 46%;
   border: 4px solid #ffcc19;
   pointer-events: none;
   display: flex;
@@ -94,8 +94,8 @@ video {
 .price-frame {
   left: 8%;
   right: 8%;
-  top: 36%;
-  height: 22%;
+  top: 28%;
+  height: 18%;
 }
 
 .is-hidden {
@@ -103,11 +103,17 @@ video {
 }
 
 .dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
   background: #101b2d;
   border-top: 1px solid rgb(255 255 255 / 0.08);
   padding: 14px clamp(14px, 4vw, 28px) calc(16px + env(safe-area-inset-bottom));
   display: grid;
   gap: 12px;
+  box-shadow: 0 -12px 32px rgb(0 0 0 / 0.35);
 }
 
 .status-row,
@@ -216,6 +222,11 @@ video {
   font-size: 22px;
 }
 
+.capture.next {
+  background: #ffcc19;
+  color: #111827;
+}
+
 .file-btn input {
   display: none;
 }
@@ -231,6 +242,7 @@ video {
   background: #e8edf3;
   color: #111827;
   padding: 16px clamp(14px, 4vw, 28px) 28px;
+  min-height: 60svh;
 }
 
 .list-section h1 {
@@ -291,12 +303,13 @@ video {
 
 @media (min-width: 820px) {
   .app {
-    grid-template-columns: minmax(0, 1fr) 420px;
-    grid-template-rows: minmax(0, 1fr) auto;
+    padding-right: 420px;
+    padding-bottom: 0;
   }
 
   .camera-stage {
-    grid-row: 1 / 3;
+    position: fixed;
+    inset: 0 420px 0 0;
     min-height: 100svh;
   }
 
@@ -304,8 +317,20 @@ video {
     min-height: 100svh;
   }
 
+  .dock {
+    left: auto;
+    width: 420px;
+    top: 0;
+    bottom: auto;
+    min-height: 55svh;
+    align-content: start;
+    box-shadow: -12px 0 32px rgb(0 0 0 / 0.22);
+  }
+
   .list-section {
+    margin-left: 0;
     overflow: auto;
-    max-height: 45svh;
+    min-height: 100svh;
+    padding-top: 58svh;
   }
 }
