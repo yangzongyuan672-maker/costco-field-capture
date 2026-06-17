@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#07111f" />
+    <title>Costco 现场采集器</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="camera-stage" aria-label="拍照区域">
+        <video id="camera" playsinline muted autoplay></video>
+        <canvas id="snapshot" hidden></canvas>
+        <div class="empty-camera" id="emptyCamera">
+          <strong>Costco 现场采集器</strong>
+          <span>先启动相机，按顺序拍商品和价格牌。</span>
+        </div>
+
+        <div class="frame product-frame" id="productFrame">
+          <span>商品图</span>
+        </div>
+        <div class="frame price-frame is-hidden" id="priceFrame">
+          <span>价格牌</span>
+        </div>
+      </section>
+
+      <section class="dock">
+        <div class="status-row">
+          <div>
+            <span class="eyebrow">当前</span>
+            <strong id="stepTitle">第 1 组 · 拍商品</strong>
+          </div>
+          <div class="count-pill"><span id="pairCount">0</span> 组</div>
+        </div>
+
+        <div class="mode-tabs" role="tablist" aria-label="拍摄步骤">
+          <button class="mode-tab is-active" id="productMode" type="button">商品</button>
+          <button class="mode-tab" id="priceMode" type="button">价格牌</button>
+        </div>
+
+        <div class="zoom-row" id="zoomRow">
+          <button class="zoom-btn is-active" type="button" data-zoom="1">1x</button>
+          <button class="zoom-btn" type="button" data-zoom="2">2x</button>
+          <button class="zoom-btn" type="button" data-zoom="3">3x</button>
+        </div>
+        <div class="zoom-note" id="zoomNote">1x 原始画面</div>
+
+        <div class="actions">
+          <button class="secondary" id="startBtn" type="button">启动相机</button>
+          <button class="capture" id="captureBtn" type="button">拍摄</button>
+          <label class="secondary file-btn">
+            系统相机
+            <input id="fileInput" type="file" accept="image/*" capture="environment" />
+          </label>
+        </div>
+
+        <div class="tools">
+          <button id="undoBtn" type="button">撤回上一张</button>
+          <button id="exportBtn" type="button">导出今天任务</button>
+          <button id="clearBtn" type="button">清空</button>
+        </div>
+      </section>
+
+      <section class="list-section">
+        <header>
+          <h1>今日采集</h1>
+          <span id="storageStatus">本地保存中</span>
+        </header>
+        <div class="pair-list" id="pairList"></div>
+      </section>
+    </main>
+
+    <template id="pairTemplate">
+      <article class="pair-card">
+        <div class="pair-head">
+          <strong></strong>
+          <span></span>
+        </div>
+        <div class="thumbs">
+          <div class="thumb">
+            <img alt="商品图" />
+            <span>商品</span>
+          </div>
+          <div class="thumb">
+            <img alt="价格牌" />
+            <span>价格牌</span>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
