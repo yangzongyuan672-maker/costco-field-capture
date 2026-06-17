@@ -106,9 +106,9 @@ async function setZoom(value) {
   }
   els.zoomNote.textContent = value === 1 ? "1x 原始画面" : `${value}x，优先使用相机光学/系统变焦`;
 
-  const track = stream?.getVideoTracks?.()[0];
-  const caps = track?.getCapabilities?.();
-  if (!track || !caps?.zoom) return;
+  const track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+  const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+  if (!track || !caps || !caps.zoom) return;
 
   const zoom = Math.min(Math.max(value, caps.zoom.min), caps.zoom.max);
   try {
@@ -142,7 +142,7 @@ async function captureFromVideo() {
 }
 
 async function captureFromFile(event) {
-  const file = event.target.files?.[0];
+  const file = event.target.files && event.target.files[0];
   event.target.value = "";
   if (!file) return;
 
@@ -153,7 +153,7 @@ async function captureFromFile(event) {
     const bitmap = await createImageBitmap(file);
     width = bitmap.width;
     height = bitmap.height;
-    bitmap.close?.();
+    if (bitmap.close) bitmap.close();
   } catch {
     width = null;
   }
@@ -336,8 +336,8 @@ function updateControls() {
   els.captureBtn.classList.toggle("is-hidden", waitingNext);
   els.nextBtn.classList.toggle("is-hidden", !waitingNext);
   els.startBtn.textContent = stream ? "重启相机" : "启动相机";
-  els.productFrame.classList.toggle("is-hidden", waitingNext || mode !== "product");
-  els.priceFrame.classList.toggle("is-hidden", waitingNext || mode !== "price");
+  els.productFrame.classList.toggle("is-hidden", !stream || waitingNext || mode !== "product");
+  els.priceFrame.classList.toggle("is-hidden", !stream || waitingNext || mode !== "price");
 }
 
 function groupCaptures() {
@@ -365,7 +365,7 @@ function openDb() {
 }
 
 function getCaptureExtension(capture) {
-  if (capture.meta?.ext) return capture.meta.ext;
+  if (capture.meta && capture.meta.ext) return capture.meta.ext;
   return EXT_BY_TYPE[capture.blob.type] || "jpg";
 }
 
@@ -403,7 +403,7 @@ function getFileExtension(file) {
 }
 
 function makeId() {
-  if (crypto.randomUUID) return crypto.randomUUID();
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
