@@ -206,8 +206,6 @@ function setMode(nextMode) {
   mode = nextMode;
   els.productMode.classList.toggle("is-active", mode === "product");
   els.priceMode.classList.toggle("is-active", mode === "price");
-  els.productFrame.classList.toggle("is-hidden", mode !== "product");
-  els.priceFrame.classList.toggle("is-hidden", mode !== "price");
   updateStepTitle();
   updateControls();
 }
