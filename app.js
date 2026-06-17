@@ -14,6 +14,7 @@ const els = {
   zoomNote: $("zoomNote"),
   startBtn: $("startBtn"),
   captureBtn: $("captureBtn"),
+  nextBtn: $("nextBtn"),
   fileInput: $("fileInput"),
   undoBtn: $("undoBtn"),
   exportBtn: $("exportBtn"),
@@ -26,6 +27,7 @@ const els = {
 const DB_NAME = "costco-field-capture-v1";
 const STORE = "captures";
 const JPEG_QUALITY = 0.96;
+const ITEMS_PER_GROUP = 9;
 const EXT_BY_TYPE = {
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
@@ -39,6 +41,7 @@ let db;
 let stream;
 let mode = "product";
 let currentZoom = 1;
+let waitingNext = false;
 let captures = [];
 let objectUrls = [];
 
@@ -54,6 +57,7 @@ async function init() {
 function bindEvents() {
   els.startBtn.addEventListener("click", startCamera);
   els.captureBtn.addEventListener("click", captureFromVideo);
+  els.nextBtn.addEventListener("click", startNextPair);
   els.fileInput.addEventListener("change", captureFromFile);
   els.productMode.addEventListener("click", () => setMode("product"));
   els.priceMode.addEventListener("click", () => setMode("price"));
@@ -68,6 +72,8 @@ function bindEvents() {
 
 async function startCamera() {
   stopCamera();
+  waitingNext = false;
+  updateControls();
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -83,6 +89,7 @@ async function startCamera() {
     await setZoom(currentZoom);
   } catch (error) {
     alert(`相机启动失败：${error.message || error}`);
+    updateControls();
   }
 }
 
@@ -175,7 +182,14 @@ async function saveCapture(blob, meta) {
 
   await putCapture(capture);
   captures.push(capture);
-  setMode(mode === "product" ? "price" : "product");
+  if (mode === "price") {
+    waitingNext = true;
+    stopCamera();
+    setMode("product");
+  } else {
+    waitingNext = false;
+    setMode("price");
+  }
   await render();
 }
 
@@ -195,6 +209,13 @@ function setMode(nextMode) {
   els.productFrame.classList.toggle("is-hidden", mode !== "product");
   els.priceFrame.classList.toggle("is-hidden", mode !== "price");
   updateStepTitle();
+  updateControls();
+}
+
+async function startNextPair() {
+  waitingNext = false;
+  setMode("product");
+  await startCamera();
 }
 
 async function undoLast() {
@@ -202,6 +223,7 @@ async function undoLast() {
   if (!last) return;
   await deleteCapture(last.id);
   captures = captures.slice(0, -1);
+  waitingNext = false;
   setMode(last.kind);
   await render();
 }
@@ -212,6 +234,7 @@ async function clearAll() {
   if (!ok) return;
   await clearStore();
   captures = [];
+  waitingNext = false;
   setMode("product");
   await render();
 }
@@ -234,13 +257,17 @@ async function exportZip() {
   };
 
   for (const pair of completePairs) {
-    const no = String(pair.pairNo).padStart(3, "0");
-    const productName = `${no}_product.${getCaptureExtension(pair.product)}`;
-    const priceName = `${no}_price.${getCaptureExtension(pair.price)}`;
+    const itemId = getItemId(pair.pairNo);
+    const productName = `${itemId}_product.${getCaptureExtension(pair.product)}`;
+    const priceName = `${itemId}_price.${getCaptureExtension(pair.price)}`;
     files.push({ name: productName, data: await pair.product.blob.arrayBuffer() });
     files.push({ name: priceName, data: await pair.price.blob.arrayBuffer() });
     data.items.push({
-      id: no,
+      id: itemId,
+      pairNo: pair.pairNo,
+      date: getLocalDateCompact(),
+      groupNo: getGroupNo(pair.pairNo),
+      itemNo: getItemNo(pair.pairNo),
       productImage: productName,
       priceImage: priceName,
       productCapturedAt: pair.product.createdAt,
@@ -256,7 +283,7 @@ async function exportZip() {
   });
 
   const zipBlob = buildZip(files);
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const date = getLocalDateCompact();
   downloadBlob(zipBlob, `costco_capture_${date}_${completePairs.length}items.zip`);
 }
 
@@ -280,7 +307,7 @@ async function render() {
 
   for (const pair of [...pairs].reverse()) {
     const card = els.pairTemplate.content.firstElementChild.cloneNode(true);
-    card.querySelector(".pair-head strong").textContent = `第 ${pair.pairNo} 组`;
+    card.querySelector(".pair-head strong").textContent = getItemLabel(pair.pairNo);
     const state = pair.product && pair.price ? "完整" : pair.product ? "缺价格牌" : "缺商品";
     card.querySelector(".pair-head span").textContent = state;
     const imgs = card.querySelectorAll("img");
@@ -298,7 +325,19 @@ function setThumb(img, blob) {
 
 function updateStepTitle() {
   const pairNo = getNextSlot().pairNo;
-  els.stepTitle.textContent = `第 ${pairNo} 组 · 拍${mode === "product" ? "商品" : "价格牌"}`;
+  if (waitingNext) {
+    els.stepTitle.textContent = `${getItemLabel(pairNo)} · 待开始`;
+    return;
+  }
+  els.stepTitle.textContent = `${getItemLabel(pairNo)} · 拍${mode === "product" ? "商品" : "价格牌"}`;
+}
+
+function updateControls() {
+  els.captureBtn.classList.toggle("is-hidden", waitingNext);
+  els.nextBtn.classList.toggle("is-hidden", !waitingNext);
+  els.startBtn.textContent = stream ? "重启相机" : "启动相机";
+  els.productFrame.classList.toggle("is-hidden", waitingNext || mode !== "product");
+  els.priceFrame.classList.toggle("is-hidden", waitingNext || mode !== "price");
 }
 
 function groupCaptures() {
@@ -328,6 +367,32 @@ function openDb() {
 function getCaptureExtension(capture) {
   if (capture.meta?.ext) return capture.meta.ext;
   return EXT_BY_TYPE[capture.blob.type] || "jpg";
+}
+
+function getItemId(pairNo) {
+  return `${getLocalDateCompact()}_g${String(getGroupNo(pairNo)).padStart(2, "0")}_${String(getItemNo(pairNo)).padStart(2, "0")}`;
+}
+
+function getItemLabel(pairNo) {
+  return `${getLocalDateDisplay()} · 第 ${getGroupNo(pairNo)} 组 · 第 ${getItemNo(pairNo)} 个`;
+}
+
+function getGroupNo(pairNo) {
+  return Math.floor((pairNo - 1) / ITEMS_PER_GROUP) + 1;
+}
+
+function getItemNo(pairNo) {
+  return ((pairNo - 1) % ITEMS_PER_GROUP) + 1;
+}
+
+function getLocalDateCompact() {
+  const date = new Date();
+  return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getLocalDateDisplay() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function getFileExtension(file) {
